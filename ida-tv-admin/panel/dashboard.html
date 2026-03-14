@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>IDA TV: ADMIN</title>
+
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body class="bg-gray-900 text-white">
+
+<div class="flex flex-col md:flex-row">
+
+<!-- Sidebar -->
+
+<div class="w-full md:w-60 bg-gray-800 min-h-screen p-4">
+
+<h2 class="text-xl mb-6">📡 IDA TV</h2>
+
+<ul>
+<li class="mb-3"><a href="dashboard.html">Dashboard</a></li>
+<li class="mb-3"><a href="clients.html">Clients</a></li>
+<li class="mb-3"><a href="calendar.html">Calendar</a></li>
+</ul>
+
+</div>
+
+<!-- Main -->
+
+<div class="flex-1 p-6">
+
+<h1 class="text-2xl mb-6">Dashboard</h1>
+
+<!-- CLIENT STATS -->
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+<div class="bg-gray-800 p-4 rounded">
+Clients
+<h2 id="totalClients" class="text-xl">0</h2>
+</div>
+
+<div class="bg-gray-800 p-4 rounded">
+Paid
+<h2 id="paidClients" class="text-green-400 text-xl">0</h2>
+</div>
+
+<div class="bg-gray-800 p-4 rounded">
+Pending
+<h2 id="pendingClients" class="text-yellow-400 text-xl">0</h2>
+</div>
+
+<div class="bg-gray-800 p-4 rounded">
+Unpaid
+<h2 id="unpaidClients" class="text-red-400 text-xl">0</h2>
+</div>
+
+</div>
+
+<!-- FINANCIAL -->
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+
+<div class="bg-gray-800 p-4 rounded">
+Paid Income
+<h2 id="paidIncome" class="text-green-400 text-xl">0 €</h2>
+</div>
+
+<div class="bg-gray-800 p-4 rounded">
+Pending Income
+<h2 id="pendingIncome" class="text-yellow-400 text-xl">0 €</h2>
+</div>
+
+<div class="bg-gray-800 p-4 rounded">
+Unpaid Income
+<h2 id="unpaidIncome" class="text-red-400 text-xl">0 €</h2>
+</div>
+
+<div class="bg-gray-800 p-4 rounded">
+Total Income
+<h2 id="totalIncome" class="text-blue-400 text-xl">0 €</h2>
+</div>
+
+</div>
+
+<!-- PROVIDER CHART -->
+
+<div class="bg-gray-800 p-6 rounded mt-10">
+
+<h2 class="mb-4">Providers</h2>
+
+<canvas id="providerChart"></canvas>
+
+</div>
+
+<!-- MONTHLY INCOME -->
+
+<div class="bg-gray-800 p-6 rounded mt-10">
+
+<h2 class="mb-4">Income by Month</h2>
+
+<canvas id="incomeChart"></canvas>
+
+</div>
+
+<!-- EXPIRING -->
+
+<div class="bg-gray-800 p-6 rounded mt-10">
+
+<h2 class="mb-4">Expiring Soon</h2>
+
+<ul id="expiringList"></ul>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let clients = JSON.parse(localStorage.getItem("clients")) || []
+
+document.getElementById("totalClients").innerText = clients.length
+
+let paid=0
+let pending=0
+let unpaid=0
+
+let paidIncome=0
+let pendingIncome=0
+let unpaidIncome=0
+
+let providers={}
+let months={}
+
+clients.forEach(c=>{
+
+const price=parseFloat(c.price)||0
+
+if(c.status==="Paid"){
+paid++
+paidIncome+=price
+}
+
+if(c.status==="Pending"){
+pending++
+pendingIncome+=price
+}
+
+if(c.status==="Unpaid"){
+unpaid++
+unpaidIncome+=price
+}
+
+if(c.provider){
+providers[c.provider]=(providers[c.provider]||0)+1
+}
+
+if(c.expire){
+
+let date=new Date(c.expire)
+
+let month=date.getFullYear()+"-"+(date.getMonth()+1)
+
+months[month]=(months[month]||0)+price
+
+}
+
+})
+
+const totalIncome = paidIncome + pendingIncome + unpaidIncome
+
+document.getElementById("paidClients").innerText = paid
+document.getElementById("pendingClients").innerText = pending
+document.getElementById("unpaidClients").innerText = unpaid
+
+document.getElementById("paidIncome").innerText = paidIncome+" €"
+document.getElementById("pendingIncome").innerText = pendingIncome+" €"
+document.getElementById("unpaidIncome").innerText = unpaidIncome+" €"
+document.getElementById("totalIncome").innerText = totalIncome+" €"
+
+
+// PROVIDER CHART
+
+const ctx=document.getElementById("providerChart")
+
+new Chart(ctx,{
+
+type:"pie",
+
+data:{
+labels:Object.keys(providers).length?Object.keys(providers):["No Data"],
+datasets:[{
+data:Object.values(providers).length?Object.values(providers):[1],
+backgroundColor:[
+"#3b82f6",
+"#10b981",
+"#f59e0b",
+"#ef4444",
+"#8b5cf6",
+"#14b8a6"
+]
+}]
+}
+
+})
+
+
+// MONTHLY INCOME CHART
+
+const incomeCtx=document.getElementById("incomeChart")
+
+new Chart(incomeCtx,{
+
+type:"bar",
+
+data:{
+labels:Object.keys(months).length?Object.keys(months):["No Data"],
+datasets:[{
+label:"Income €",
+data:Object.values(months).length?Object.values(months):[0],
+backgroundColor:"#3b82f6"
+}]
+}
+
+})
+
+
+// EXPIRING
+
+const list=document.getElementById("expiringList")
+
+const today=new Date()
+
+let found=false
+
+clients.forEach(c=>{
+
+if(!c.expire) return
+
+const expire=new Date(c.expire)
+
+const diff=(expire-today)/(1000*60*60*24)
+
+if(diff<=7 && diff>=0){
+
+const li=document.createElement("li")
+
+li.className="text-yellow-400"
+
+li.innerText=c.name+" - "+c.expire
+
+list.appendChild(li)
+
+found=true
+
+}
+
+})
+
+if(!found){
+
+const li=document.createElement("li")
+
+li.innerText="No subscriptions expiring soon"
+
+list.appendChild(li)
+
+}
+
+</script>
+
+</body>
+</html>

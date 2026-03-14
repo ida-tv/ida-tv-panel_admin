@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Calendar - IDA TV</title>
+
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet">
+
+</head>
+
+<body class="bg-gray-900 text-white">
+
+<div class="flex">
+
+<!-- Sidebar -->
+
+<div class="w-60 bg-gray-800 min-h-screen p-4">
+
+<h2 class="text-xl mb-6">📡 IDA TV</h2>
+
+<ul>
+
+<li class="mb-3"><a href="dashboard.html">Dashboard</a></li>
+<li class="mb-3"><a href="clients.html">Clients</a></li>
+<li class="mb-3"><a href="calendar.html">Calendar</a></li>
+
+</ul>
+
+</div>
+
+<!-- Main -->
+
+<div class="flex-1 p-6">
+
+<h1 class="text-2xl mb-6">Payment Calendar</h1>
+
+<table class="w-full bg-gray-800 rounded">
+
+<tr class="bg-gray-700">
+<th class="p-2">Client</th>
+<th class="p-2">Provider</th>
+<th class="p-2">Expire Date</th>
+<th class="p-2">Days Left</th>
+</tr>
+
+<tbody id="calendarTable"></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+<script>
+
+let clients = JSON.parse(localStorage.getItem("clients")) || []
+
+const table=document.getElementById("calendarTable")
+
+const today=new Date()
+
+clients.forEach(c=>{
+
+const expire=new Date(c.expire)
+
+const diff=Math.floor((expire-today)/(1000*60*60*24))
+
+const row=document.createElement("tr")
+
+row.innerHTML=`
+
+<td class="p-2">${c.name}</td>
+<td class="p-2">${c.provider}</td>
+<td class="p-2">${c.expire}</td>
+<td class="p-2">${diff}</td>
+
+`
+
+table.appendChild(row)
+
+})
+
+</script>
+
+</body>
+</html>

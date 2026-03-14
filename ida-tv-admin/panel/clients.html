@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Clients - IDA TV</title>
+
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+</head>
+
+<body class="bg-gray-900 text-white">
+
+<div class="flex">
+
+<!-- Sidebar -->
+
+<div class="w-60 bg-gray-800 min-h-screen p-4">
+
+<h2 class="text-xl mb-6">📡 IDA TV</h2>
+
+<ul>
+<li class="mb-3"><a href="dashboard.html">Dashboard</a></li>
+<li class="mb-3"><a href="clients.html">Clients</a></li>
+<li class="mb-3"><a href="calendar.html">Calendar</a></li>
+</ul>
+
+</div>
+
+<!-- Main -->
+
+<div class="flex-1 p-6">
+
+<h1 class="text-2xl mb-6">Clients</h1>
+
+<button onclick="openForm()" class="bg-blue-500 p-2 rounded mb-4">
+Add Client
+</button>
+
+<button onclick="exportExcel()" class="bg-green-600 p-2 rounded mb-4 ml-2">
+Export Excel
+</button>
+
+<input type="file" id="importFile" class="hidden" accept=".xlsx,.xls">
+
+<button onclick="document.getElementById('importFile').click()" 
+class="bg-purple-600 p-2 rounded mb-4 ml-2">
+Import Excel
+</button>
+
+<!-- CLIENT FORM -->
+
+<div id="clientForm" class="hidden bg-gray-800 p-4 rounded mb-6 max-w-md">
+
+<input id="name" placeholder="Client name" class="p-2 text-black mb-2 w-full">
+
+<select id="provider" class="p-2 text-black mb-2 w-full">
+
+<option>Edem.TV</option>
+<option>Yosso.TV</option>
+<option>Antifriz.TV</option>
+<option>Alltv.club</option>
+<option>New.tv.team</option>
+<option>Uspeh.tv</option>
+
+</select>
+
+<input id="price" placeholder="Price" class="p-2 text-black mb-2 w-full">
+
+<select id="status" class="p-2 text-black mb-2 w-full">
+
+<option>Paid</option>
+<option>Pending</option>
+<option>Unpaid</option>
+
+</select>
+
+<input id="expire" type="date" class="p-2 text-black mb-3 w-full">
+
+<button onclick="addClient()" class="bg-green-500 p-2 rounded w-full">
+Save Client
+</button>
+
+</div>
+
+<input id="search" placeholder="Search client..." class="p-2 text-black mb-4 w-64">
+
+<table id="clientsTable" class="w-full bg-gray-800 rounded">
+
+<tr class="bg-gray-700">
+
+<th class="p-2">Client</th>
+<th class="p-2">Provider</th>
+<th class="p-2">Price</th>
+<th class="p-2">Status</th>
+<th class="p-2">Expire</th>
+<th class="p-2">Actions</th>
+
+</tr>
+
+</table>
+
+</div>
+
+</div>
+
+<script>
+
+let clients = JSON.parse(localStorage.getItem("clients")) || []
+
+function saveClients(){
+localStorage.setItem("clients", JSON.stringify(clients))
+}
+
+function renderClients(){
+
+const table=document.getElementById("clientsTable")
+
+document.querySelectorAll(".clientRow").forEach(e=>e.remove())
+
+clients.forEach((client,index)=>{
+
+const row=table.insertRow()
+
+row.className="clientRow"
+
+row.innerHTML=`
+
+<td class="p-2">${client.name||""}</td>
+<td class="p-2">${client.provider||""}</td>
+<td class="p-2">${client.price||""}</td>
+<td class="p-2">${client.status||""}</td>
+<td class="p-2">${client.expire||""}</td>
+
+<td class="p-2">
+
+<button onclick="extendClient(${index})" class="bg-green-600 px-2 py-1 rounded mr-2">
+Extend
+</button>
+
+<button onclick="deleteClient(${index})" class="bg-red-600 px-2 py-1 rounded">
+Delete
+</button>
+
+</td>
+
+`
+
+})
+
+}
+
+function openForm(){
+document.getElementById("clientForm").classList.toggle("hidden")
+}
+
+function addClient(){
+
+const name=document.getElementById("name").value
+const provider=document.getElementById("provider").value
+const price=document.getElementById("price").value
+const status=document.getElementById("status").value
+const expire=document.getElementById("expire").value
+
+if(!name){
+alert("Enter client name")
+return
+}
+
+clients.push({
+name,
+provider,
+price,
+status,
+expire
+})
+
+saveClients()
+renderClients()
+
+document.getElementById("clientForm").classList.add("hidden")
+
+document.getElementById("name").value=""
+document.getElementById("price").value=""
+document.getElementById("expire").value=""
+
+}
+
+function deleteClient(index){
+
+clients.splice(index,1)
+
+saveClients()
+renderClients()
+
+}
+
+function extendClient(index){
+
+if(!clients[index].expire) return
+
+let date = new Date(clients[index].expire)
+
+date.setMonth(date.getMonth()+1)
+
+clients[index].expire = date.toISOString().split("T")[0]
+
+saveClients()
+renderClients()
+
+}
+
+const search=document.getElementById("search")
+
+search.addEventListener("input",()=>{
+
+const value=search.value.toLowerCase()
+
+document.querySelectorAll(".clientRow").forEach(row=>{
+
+row.style.display=
+row.innerText.toLowerCase().includes(value)
+? ""
+: "none"
+
+})
+
+})
+
+function exportExcel(){
+
+if(clients.length===0){
+alert("No clients to export")
+return
+}
+
+const worksheet=XLSX.utils.json_to_sheet(clients)
+
+const workbook=XLSX.utils.book_new()
+
+XLSX.utils.book_append_sheet(workbook,worksheet,"Clients")
+
+XLSX.writeFile(workbook,"clients.xlsx")
+
+}
+
+document.getElementById("importFile").addEventListener("change",function(e){
+
+const file=e.target.files[0]
+
+if(!file) return
+
+const reader=new FileReader()
+
+reader.onload=function(event){
+
+const data=new Uint8Array(event.target.result)
+
+const workbook=XLSX.read(data,{type:"array"})
+
+const sheet=workbook.Sheets[workbook.SheetNames[0]]
+
+const imported=XLSX.utils.sheet_to_json(sheet)
+
+clients=imported
+
+saveClients()
+
+renderClients()
+
+alert("Clients imported successfully")
+
+}
+
+reader.readAsArrayBuffer(file)
+
+})
+
+renderClients()
+
+</script>
+
+</body>
+</html>
