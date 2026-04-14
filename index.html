@@ -1,1 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDA TV | Контроль Активаций</title>
+    <style>
+        :root { --accent: #007aff; --bg: #f5f5f7; --card: #ffffff; --text: #1d1d1f; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
+        
+        /* Сетка: форма слева, список справа */
+        .grid { display: grid; grid-template-columns: 350px 1fr; gap: 20px; max-width: 1200px; margin: 0 auto; }
+        
+        .card { background: var(--card); padding: 20px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #d2d2d7; }
+        h2 { font-size: 18px; margin-top: 0; color: var(--accent); border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 11px; font-weight: bold; color: #888; margin-bottom: 5px; }
+        input { width: 100%; padding: 10px; background: #f9f9fb; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; outline: none; }
+        input:focus { border-color: var(--accent); background: #fff; }
+        
+        .btn-add { width: 100%; background: var(--accent); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-add:hover { opacity: 0.8; }
 
+        /* Стили таблицы */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th { text-align: left; background: #f2f2f7; padding: 12px; color: #888; font-size: 12px; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+        .status-active { color: #34c759; font-weight: bold; }
+        .btn-del { background: #ff3b30; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+
+        @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="grid">
+    <div class="card">
+        <h2>Новая активация</h2>
+        <div class="form-group"><label>ID (ЛАТИНИЦА)</label><input type="text" id="c_id" placeholder="ivan77"></div>
+        <div class="form-group"><label>ИМЯ КЛИЕНТА</label><input type="text" id="c_nick" placeholder="Иван"></div>
+        <div class="form-group"><label>СРОК ДО</label><input type="text" id="c_date" placeholder="31.12.2026"></div>
+        <div class="form-group"><label>ССЫЛКА M3U</label><input type="text" id="c_m3u"></div>
+        <div class="form-group"><label>ССЫЛКА EPG</label><input type="text" id="c_epg"></div>
+        <button class="btn-add" onclick="saveData()">АКТИВИРОВАТЬ</button>
+    </div>
+
+    <div class="card">
+        <h2>Список активированных</h2>
+        <table id="clientTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Имя</th>
+                    <th>Срок</th>
+                    <th>Статус</th>
+                    <th>Действие</th>
+                </tr>
+            </thead>
+            <tbody id="clientsList">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const DB_URL = "https://player1-71b92-default-rtdb.firebaseio.com";
+
+    // 1. Функция сохранения
+    async function saveData() {
+        const id = document.getElementById('c_id').value.trim();
+        if(!id) return alert("Введите ID!");
+        
+        const data = {
+            nickname: document.getElementById('c_nick').value,
+            expireDate: document.getElementById('c_date').value,
+            m3u: document.getElementById('c_m3u').value,
+            epg: document.getElementById('c_epg').value
+        };
+
+        await fetch(`${DB_URL}/clients/${id}.json`, { method: 'PUT', body: JSON.stringify(data) });
+        alert("Сохранено!");
+        loadClients(); // Обновляем список сразу
+    }
+
+    // 2. Функция загрузки списка
+    async function loadClients() {
+        const tbody = document.getElementById('clientsList');
+        tbody.innerHTML = "<tr><td colspan='5'>Загрузка...</td></tr>";
+
+        try {
+            const res = await fetch(`${DB_URL}/clients.json`);
+            const allClients = await res.json();
+            
+            tbody.innerHTML = ""; // Очищаем
+
+            if(!allClients) {
+                tbody.innerHTML = "<tr><td colspan='5'>Нет активных клиентов</td></tr>";
+                return;
+            }
+
+            for (let id in allClients) {
+                const c = allClients[id];
+                const row = `
+                    <tr>
+                        <td><b>${id}</b></td>
+                        <td>${c.nickname || '—'}</td>
+                        <td>${c.expireDate || '—'}</td>
+                        <td class="status-active">Active</td>
+                        <td><button class="btn-del" onclick="deleteClient('${id}')">Удалить</button></td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
+            }
+        } catch (e) {
+            tbody.innerHTML = "<tr><td colspan='5'>Ошибка загрузки</td></tr>";
+        }
+    }
+
+    // 3. Функция удаления
+    async function deleteClient(id) {
+        if(confirm(`Удалить доступ для ${id}?`)) {
+            await fetch(`${DB_URL}/clients/${id}.json`, { method: 'DELETE' });
+            loadClients();
+        }
+    }
+
+    // Загружаем список при открытии страницы
+    loadClients();
+</script>
+
+</body>
+</html>
